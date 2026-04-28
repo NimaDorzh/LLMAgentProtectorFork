@@ -54,6 +54,48 @@ When using an LLM API, you typically have two options: passing a single combined
 pip install git+https://github.com/your-username/LLMAgentProtector.git
 ```
 
+## 🔑 Model Provider Setup
+
+The helper `call_gpt()` now supports both the OpenAI API and GitHub Models without changing application code.
+
+### OpenAI
+
+```bash
+OPENAI_API_KEY=your_openai_key
+GPT_PROVIDER=openai
+OPENAI_MODEL=gpt-3.5-turbo
+```
+
+Optional:
+
+```bash
+OPENAI_BASE_URL=https://your-compatible-endpoint
+GPT_MODEL=gpt-4o-mini
+```
+
+### GitHub Models
+
+Create a fine-grained personal access token with the `models:read` permission, then set:
+
+```bash
+GITHUB_TOKEN=your_github_pat
+GPT_PROVIDER=github
+GITHUB_MODEL=openai/gpt-4o-mini
+```
+
+Optional:
+
+```bash
+GITHUB_MODELS_BASE_URL=https://models.github.ai/inference
+```
+
+Selection rules:
+
+- If `GPT_PROVIDER` is set to `openai` or `github`, that provider is used explicitly.
+- Otherwise, `call_gpt()` prefers OpenAI when `OPENAI_API_KEY` is set.
+- If OpenAI is not configured, `call_gpt()` falls back to GitHub Models when `GITHUB_TOKEN` is set.
+- `GPT_MODEL` overrides the provider-specific default model.
+
 ## 🚀 Use Case
 
 ### **Python Example**
