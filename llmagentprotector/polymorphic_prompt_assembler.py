@@ -1,5 +1,6 @@
 import random
 from . import config
+from .dynamic_separator import DynamicSeparatorProvider
 
 class PolymorphicPromptAssembler:
     """
@@ -31,14 +32,32 @@ class PolymorphicPromptAssembler:
         >>> prompt_leaked = protector.leak_detect(response, canary)
     """
 
-    def __init__(self, system_prompt:str=None, task_topic:str=None):
+    def __init__(self, system_prompt: str | None = None, task_topic: str | None = None, separator_mode: str = "static", separator_provider=None, session_id: str | None = None):
         self.SEPARATORS     =  config.SEPARATORS
         self.TOPIC_CONSTRAIN = config.TOPIC_CONSTRAIN
         self.ANTI_PROMPT_LEAKAGE_CONSTRAIN = config.ANTI_PROMPT_LEAKAGE_CONSTRAIN
         self.FORMAT_CONSTRAIN = config.FORMAT_CONSTRAIN
+        self.separator_mode = separator_mode
+        self.separator_provider = self._build_separator_provider(separator_mode, separator_provider, session_id)
+        system_prompt = system_prompt or ""
+        task_topic = task_topic or ""
         self.secure_system_prompt = system_prompt + self.ANTI_PROMPT_LEAKAGE_CONSTRAIN + "\n\n" + self.TOPIC_CONSTRAIN.replace("{task_topic}", task_topic)      
 
-    def single_prompt_assemble(self, user_input: str = None):
+    def _build_separator_provider(self, separator_mode, separator_provider, session_id):
+        if separator_provider is not None:
+            return separator_provider
+        if separator_mode == "static":
+            return None
+        if separator_mode == "dynamic":
+            return DynamicSeparatorProvider(default_session_id=session_id)
+        raise ValueError(f"Unknown separator_mode: {separator_mode!r} (expected 'static' or 'dynamic')")
+
+    def _select_separators(self, session_id: str | None = None):
+        if self.separator_provider is None:
+            return tuple(random.choice(self.SEPARATORS))
+        return tuple(self.separator_provider(session_id=session_id))
+
+    def single_prompt_assemble(self, user_input: str | None = None, session_id: str | None = None):
         """
         This method assemble one protected prompt (secure_prompt) by inserting the user input between randomly chosen separators. This single prompts serve for the case developer only pass one prompt to LLM when developping agent.  
 
@@ -51,13 +70,14 @@ class PolymorphicPromptAssembler:
                 - canary ((left_sep, right_sep)): Canary are left_sep and right_sep that are embedded into model input and used to detect the prompt leakage.
         """
 
-        left_sep, right_sep = random.choice(self.SEPARATORS)
+        user_input = user_input or ""
+        left_sep, right_sep = self._select_separators(session_id=session_id)
         format_constrain = self.FORMAT_CONSTRAIN.format(left_sep=left_sep, right_sep=right_sep)
         format_constrain = "\n" + format_constrain + "\n\n" + left_sep + "\n" + user_input + "\n" + right_sep + "\n" 
         return self.secure_system_prompt.replace("{user_input}", format_constrain), (left_sep, right_sep)
 
 
-    def double_prompt_assemble(self, user_input: str = None):
+    def double_prompt_assemble(self, user_input: str | None = None, session_id: str | None = None):
         """
         
         This method assemble two protected prompts (secure_system_prompt, secure_user_prompt) by inserting the user input between randomly chosen separators. This two prompts serve for the case developer want to pass both system prompt and user prompts to LLM when developping agent.   
@@ -72,7 +92,8 @@ class PolymorphicPromptAssembler:
                 - canary ((left_sep, right_sep)): Canary are left_sep and right_sep that are embedded into model input and used to detect the prompt leakage.
         """
 
-        left_sep, right_sep = random.choice(self.SEPARATORS)
+        user_input = user_input or ""
+        left_sep, right_sep = self._select_separators(session_id=session_id)
         self.secure_system_prompt 
         self.secure_user_prompt = self.FORMAT_CONSTRAIN.format(left_sep=left_sep, right_sep=right_sep) +  "\n\n" + left_sep + "\n" + user_input + "\n" + right_sep + "\n"
         return self.secure_system_prompt, self.secure_user_prompt, (left_sep, right_sep)
