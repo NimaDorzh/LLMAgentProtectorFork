@@ -78,7 +78,7 @@ def test_static_mode_still_selects_from_config_pool(monkeypatch):
 
 
 def test_dynamic_mode_embeds_generated_separator_in_single_prompt():
-    dynamic_pair = ("====dynamic-test====", "====dynamic-test====")
+    dynamic_pair = ("====dynamic-left====", "====dynamic-right====")
     protector = PolymorphicPromptAssembler(
         SYSTEM_PROMPT,
         TASK_TOPIC,
@@ -88,7 +88,8 @@ def test_dynamic_mode_embeds_generated_separator_in_single_prompt():
     secure_prompt, canary = protector.single_prompt_assemble(USER_INPUT, session_id="session-1")
 
     assert canary == dynamic_pair
-    assert secure_prompt.count("====dynamic-test====") >= 2
+    assert "====dynamic-left====" in secure_prompt
+    assert "====dynamic-right====" in secure_prompt
     assert USER_INPUT in secure_prompt
 
 
@@ -113,6 +114,19 @@ def test_dynamic_mode_embeds_generated_separator_in_double_prompt():
     assert USER_INPUT in secure_user_prompt
     assert "session-1" not in secure_user_prompt
     assert secure_system_prompt.startswith("Summarize the user input.")
+
+
+def test_double_prompt_assemble_does_not_store_request_prompt_on_instance():
+    protector = PolymorphicPromptAssembler(
+        "Summarize the user input.",
+        TASK_TOPIC,
+        separator_provider=lambda session_id=None: ("LEFT", "RIGHT"),
+    )
+
+    _, secure_user_prompt, _ = protector.double_prompt_assemble("first request")
+
+    assert "first request" in secure_user_prompt
+    assert not hasattr(protector, "secure_user_prompt")
 
 
 def test_dynamic_canary_leak_detect():
@@ -160,9 +174,5 @@ def test_single_prompt_without_placeholder_raises_error():
         separator_provider=lambda session_id=None: ("LEFT", "RIGHT"),
     )
 
-    try:
+    with pytest.raises(ValueError, match=r"\{user_input\}"):
         protector.single_prompt_assemble(USER_INPUT)
-    except ValueError as exc:
-        assert "{user_input}" in str(exc)
-    else:
-        raise AssertionError("single_prompt_assemble should require a {user_input} placeholder")

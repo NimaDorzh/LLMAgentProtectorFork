@@ -32,11 +32,12 @@ class PolymorphicPromptAssembler:
         >>> prompt_leaked = protector.leak_detect(response, canary)
     """
 
-    def __init__(self, system_prompt: str | None = None, task_topic: str | None = None, separator_mode: str = "static", separator_provider=None, session_id: str | None = None):
+    def __init__(self, system_prompt: str | None = None, task_topic: str | None = None, separator_mode: str = "static", separator_provider=None, session_id: str | None = None, rng=None):
         self.SEPARATORS     =  config.SEPARATORS
         self.TOPIC_CONSTRAIN = config.TOPIC_CONSTRAIN
         self.ANTI_PROMPT_LEAKAGE_CONSTRAIN = config.ANTI_PROMPT_LEAKAGE_CONSTRAIN
         self.FORMAT_CONSTRAIN = config.FORMAT_CONSTRAIN
+        self.rng = rng or random
         self.separator_mode = separator_mode
         self.separator_provider = self._build_separator_provider(separator_mode, separator_provider, session_id)
         system_prompt = system_prompt or ""
@@ -54,7 +55,7 @@ class PolymorphicPromptAssembler:
 
     def _select_separators(self, session_id: str | None = None):
         if self.separator_provider is None:
-            return tuple(random.choice(self.SEPARATORS))
+            return tuple(self.rng.choice(self.SEPARATORS))
         return tuple(self.separator_provider(session_id=session_id))
 
     def single_prompt_assemble(self, user_input: str | None = None, session_id: str | None = None):
@@ -97,8 +98,8 @@ class PolymorphicPromptAssembler:
 
         user_input = user_input or ""
         left_sep, right_sep = self._select_separators(session_id=session_id)
-        self.secure_user_prompt = self.FORMAT_CONSTRAIN.format(left_sep=left_sep, right_sep=right_sep) +  "\n\n" + left_sep + "\n" + user_input + "\n" + right_sep + "\n"
-        return self.secure_system_prompt, self.secure_user_prompt, (left_sep, right_sep)
+        secure_user_prompt = self.FORMAT_CONSTRAIN.format(left_sep=left_sep, right_sep=right_sep) +  "\n\n" + left_sep + "\n" + user_input + "\n" + right_sep + "\n"
+        return self.secure_system_prompt, secure_user_prompt, (left_sep, right_sep)
     
 
     """
@@ -115,6 +116,7 @@ class PolymorphicPromptAssembler:
         return self.leak_detect_detail(response, canary)["detected"]
 
     def leak_detect_detail(self, response, canary):
+        """Return per-side leakage flags: left, right, and detected."""
         left_sep, right_sep = canary
         response = response or ""
         left_leaked = left_sep in response
