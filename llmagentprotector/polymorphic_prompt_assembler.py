@@ -71,6 +71,9 @@ class PolymorphicPromptAssembler:
         """
 
         user_input = user_input or ""
+        if "{user_input}" not in self.secure_system_prompt:
+            raise ValueError("single_prompt_assemble requires '{user_input}' in the system prompt")
+
         left_sep, right_sep = self._select_separators(session_id=session_id)
         format_constrain = self.FORMAT_CONSTRAIN.format(left_sep=left_sep, right_sep=right_sep)
         format_constrain = "\n" + format_constrain + "\n\n" + left_sep + "\n" + user_input + "\n" + right_sep + "\n" 
