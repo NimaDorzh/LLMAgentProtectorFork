@@ -97,7 +97,6 @@ class PolymorphicPromptAssembler:
 
         user_input = user_input or ""
         left_sep, right_sep = self._select_separators(session_id=session_id)
-        self.secure_system_prompt 
         self.secure_user_prompt = self.FORMAT_CONSTRAIN.format(left_sep=left_sep, right_sep=right_sep) +  "\n\n" + left_sep + "\n" + user_input + "\n" + right_sep + "\n"
         return self.secure_system_prompt, self.secure_user_prompt, (left_sep, right_sep)
     
@@ -113,8 +112,16 @@ class PolymorphicPromptAssembler:
             detected (bool): whether prompt leakage is detected.
         """
     def leak_detect(self, response, canary):
+        return self.leak_detect_detail(response, canary)["detected"]
+
+    def leak_detect_detail(self, response, canary):
         left_sep, right_sep = canary
-        if left_sep in response or right_sep in response:
-            return True
-        return False
+        response = response or ""
+        left_leaked = left_sep in response
+        right_leaked = right_sep in response
+        return {
+            "left": left_leaked,
+            "right": right_leaked,
+            "detected": left_leaked or right_leaked,
+        }
 
