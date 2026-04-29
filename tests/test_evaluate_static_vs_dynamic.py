@@ -1,6 +1,12 @@
 import argparse
 
-from attack_tests.evaluate_static_vs_dynamic import apply_env_defaults, parse_modes, summarize_results
+from attack_tests.evaluate_static_vs_dynamic import (
+    apply_env_defaults,
+    build_phase5_interpretation,
+    parse_modes,
+    summarize_results,
+    summarize_leakage_blast_radius,
+)
 from utils.attack_utils import get_payload, list_payloads
 
 
@@ -100,3 +106,65 @@ def test_apply_env_defaults_reports_defaults(monkeypatch):
     assert resolved.modes == ["static", "dynamic"]
     assert resolved.payload == "baseline_salad"
     assert resolved.seed == 1337
+
+
+def test_summarize_leakage_blast_radius_marks_static_pool_reuse():
+    details = [
+        {
+            "session_id": "static-1",
+            "canary": {"left": "LEFT", "right": "RIGHT"},
+            "leak_detected": True,
+            "leak_detail": {"left": True, "right": False, "detected": True},
+        },
+        {
+            "session_id": "static-2",
+            "canary": {"left": "LEFT", "right": "RIGHT"},
+            "leak_detected": False,
+            "leak_detail": {"left": False, "right": False, "detected": False},
+        },
+    ]
+
+    summary = summarize_leakage_blast_radius("static", details)
+
+    assert summary["blast_radius"] == "pool-reusable"
+    assert summary["leaked_sessions"] == ["static-1"]
+    assert summary["unique_leaked_separator_count"] == 1
+    assert summary["reused_separator_count"] == 2
+    assert summary["max_observed_separator_reuse"] == 2
+
+
+def test_build_phase5_interpretation_separates_asr_parity_from_leakage_scope():
+    results = {
+        "results": {
+            "static": {
+                "summary": {"asr": 0.0, "leak_rate": 0.05},
+                "details": [
+                    {
+                        "session_id": "static-1",
+                        "canary": ["STATIC", "STATIC"],
+                        "leak_detected": True,
+                        "leak_detail": {"left": True, "right": True, "detected": True},
+                    }
+                ],
+            },
+            "dynamic": {
+                "summary": {"asr": 0.0, "leak_rate": 0.0},
+                "details": [
+                    {
+                        "session_id": "dynamic-1",
+                        "canary": {"left": "DYN-L", "right": "DYN-R"},
+                        "leak_detected": False,
+                        "leak_detail": {"left": False, "right": False, "detected": False},
+                    }
+                ],
+            },
+        }
+    }
+
+    interpretation = build_phase5_interpretation(results)
+
+    assert interpretation["comparison"]["asr_delta_dynamic_minus_static"] == 0.0
+    assert interpretation["comparison"]["attack_resistance_parity"] is True
+    assert interpretation["comparison"]["leak_rate_delta_dynamic_minus_static"] == -0.05
+    assert interpretation["leakage_blast_radius"]["static"]["blast_radius"] == "pool-reusable"
+    assert interpretation["leakage_blast_radius"]["dynamic"]["blast_radius"] == "request-scoped"
