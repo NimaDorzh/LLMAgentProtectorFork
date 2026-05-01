@@ -16,6 +16,7 @@ load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL")
 TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")
+TOGETHER_TIMEOUT = float(os.getenv("TOGETHER_TIMEOUT", "60"))
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GITHUB_MODELS_BASE_URL = os.getenv("GITHUB_MODELS_BASE_URL", "https://models.github.ai/inference")
 
@@ -54,7 +55,7 @@ else:
 if not TOGETHER_API_KEY:
     logging.error("Missing TOGETHER_API_KEY in environment, you will not able to use call_deepseek(), call_llama(), and classify_response_llama()")
 else:
-    client_llama = Together(api_key=TOGETHER_API_KEY)
+    client_llama = Together(api_key=TOGETHER_API_KEY, timeout=TOGETHER_TIMEOUT)
 
 async def call_gpt(system_prompt, user_prompt):
     """Call GPT-3.5-turbo asynchronously for summarization."""
