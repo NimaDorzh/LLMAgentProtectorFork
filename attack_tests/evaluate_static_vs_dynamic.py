@@ -188,6 +188,7 @@ async def evaluate_mode(
     seed: int | None,
     payload_name: str,
     payload: str,
+    response_classifier=classify_response_llama,
 ) -> dict:
     rng = random.Random(seed) if seed is not None else None
     protector = PolymorphicPromptAssembler(
@@ -216,7 +217,7 @@ async def evaluate_mode(
             classification = "ProviderBlocked"
         else:
             try:
-                classification = classify_response_llama(response)
+                classification = response_classifier(response)
             except Exception as exc:
                 classification = "Unknown"
                 provider_error = f"classifier:{type(exc).__name__}: {exc}"

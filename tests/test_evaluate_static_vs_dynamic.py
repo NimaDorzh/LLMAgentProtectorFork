@@ -14,12 +14,16 @@ def test_payload_registry_contains_expected_attack_families():
     payloads = list_payloads()
 
     assert "baseline_salad" in payloads
+    assert "M1_injection" in payloads
+    assert "M2_injection" in payloads
     assert "direct_override_salad" in payloads
     assert "role_confusion_salad" in payloads
     assert "format_breakout_salad" in payloads
     assert "separator_echo_salad" in payloads
     assert "benign_summary" in payloads
     assert "salad" in get_payload("baseline_salad").lower()
+    assert "injection successful" in get_payload("M1_injection").lower()
+    assert "injection successful" in get_payload("M2_injection").lower()
 
 
 def test_parse_modes_rejects_unknown_modes():
