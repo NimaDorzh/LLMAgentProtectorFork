@@ -6,7 +6,16 @@ readme = "README.md"
 authors = [{ name="Zhilong Wang", email="izhilongwang@gmail.com" }]
 license = "MIT"
 keywords = ["llm", "prompt injection", "agent", "security", "openai", "protection"]
-dependencies = []
+dependencies = [
+    "openai",
+    "tqdm",
+    "pandas",
+    "datasets",
+    "python-dotenv",
+    "together",
+    "aiohttp",
+    "httpx",
+]
 
 [project.urls]
 Homepage = "https://github.com/zhilongwang/LLMAgentProtector"
@@ -18,3 +27,4 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ["llmagentprotector"]
+
