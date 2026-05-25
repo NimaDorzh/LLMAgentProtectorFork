@@ -2,7 +2,6 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 from matplotlib import patches
-from matplotlib.lines import Line2D
 
 
 OUTPUT_DIR = Path(__file__).resolve().parent / "results"
@@ -66,11 +65,6 @@ def add_down_arrow(ax, x: float, y_top: float, y_bottom: float) -> None:
     )
 
 
-def add_cross(ax, x: float, y: float, size: float = 0.04, color: str = "#b22222") -> None:
-    ax.add_line(Line2D([x - size, x + size], [y - size, y + size], lw=2.0, color=color))
-    ax.add_line(Line2D([x - size, x + size], [y + size, y - size], lw=2.0, color=color))
-
-
 def draw_panel(
     ax,
     *,
@@ -97,13 +91,13 @@ def draw_panel(
 
     ax.text(0.5, 0.93, title, ha="center", va="center", fontsize=11, fontweight="bold", color="0.05")
 
-    box_width = 0.52
+    box_width = 0.56
     box_height = 0.12
-    box_x = 0.24
+    box_x = 0.22
     positions = [0.76, 0.56, 0.36, 0.16]
 
     add_box(ax, box_x, positions[0], box_width, box_height, "[System Prompt]", fill="0.94", fontsize=10)
-    add_box(ax, box_x, positions[1], box_width, box_height, separator_text, fill="0.98", fontsize=8.5)
+    add_box(ax, box_x, positions[1], box_width, box_height, separator_text, fill="0.98", fontsize=8.6)
     add_box(ax, box_x, positions[2], box_width, box_height, "[User Input]", fill="0.94", fontsize=10)
     add_box(ax, box_x, positions[3], box_width, box_height, final_text, fill="0.98", fontsize=9.2)
 
@@ -112,43 +106,18 @@ def draw_panel(
     add_down_arrow(ax, center_x, positions[1], positions[2] + box_height)
     add_down_arrow(ax, center_x, positions[2], positions[3] + box_height)
 
-    leak_y = positions[1] + box_height / 2
-    final_y = positions[3] + box_height / 2
-    annotation_x = 0.8
-
-    if dynamic:
-        add_cross(ax, center_x, 0.11)
-        ax.text(
-            0.72,
-            0.07,
-            leakage_caption,
-            ha="center",
-            va="bottom",
-            color="0.1",
-            linespacing=1.2,
-        )
-    else:
-        ax.annotate(
-            "",
-            xy=(0.83, final_y - 0.01),
-            xytext=(center_x + 0.13, leak_y - 0.01),
-            arrowprops=dict(
-                arrowstyle="->",
-                lw=1.5,
-                color="#b22222",
-                linestyle=(0, (4, 3)),
-                connectionstyle="arc3,rad=-0.35",
-            ),
-        )
-        ax.text(
-            0.74,
-            0.07,
-            leakage_caption,
-            ha="center",
-            va="bottom",
-            color="0.1",
-            linespacing=1.2,
-        )
+    caption_x = 0.5
+    caption_fontsize = 9.5 if dynamic else 9.2
+    ax.text(
+        caption_x,
+        0.07,
+        leakage_caption,
+        ha="center",
+        va="bottom",
+        fontsize=caption_fontsize,
+        color="0.1",
+        linespacing=1.2,
+    )
 
 
 def build_figure() -> plt.Figure:
@@ -158,21 +127,21 @@ def build_figure() -> plt.Figure:
     draw_panel(
         axes[0],
         title="Static PPA",
-        separator_text="SELECT from fixed separator pool\n(e.g. ====BEGIN-A1B2C3D4====)",
-        final_text="SAME separator reused next request",
-        leakage_caption="Leakage blast radius:\nall future requests",
+        separator_text="SELECT fixed separator\n(e.g. ====BEGIN-A1B2C3D4====)",
+        final_text="Reuse same separator next request",
+        leakage_caption="Leakage can affect\nfuture requests",
         dynamic=False,
     )
     draw_panel(
         axes[1],
         title="Dynamic PPA (ours)",
         separator_text=(
-            "GENERATE\n"
-            "SHA-256(timestamp || session_id || nonce)[:24]\n"
+            "GENERATE per-request token\n"
+            "SHA-256(... )[:24]\n"
             "(e.g. ====BEGIN-f3a8c2e1d9b7====)"
         ),
-        final_text="New unique separator each request",
-        leakage_caption="Leakage blast radius:\nsingle request only",
+        final_text="New separator every request",
+        leakage_caption="Leakage limited to\none request",
         dynamic=True,
     )
 
